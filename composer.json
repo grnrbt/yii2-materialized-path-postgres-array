@@ -1,0 +1,35 @@
+{
+  "name": "grnrbt/yii2-materialized-path-postgres-array",
+  "description": "Yii2 behavior for Materialized Path using PostgreSQL arrays.",
+  "keywords": [
+    "yii2",
+    "materialized path",
+    "postgresql",
+    "postgres",
+    "array",
+    "postgresql arrays",
+    "postgres arrays"
+  ],
+  "type": "yii2-extension",
+  "license": "MIT",
+  "support": {
+    "issues": "https://github.com/grnrbt/yii2-materialized-path-postgres-array/issues",
+    "source": "https://github.com/grnrbt/yii2-materialized-path-postgres-array"
+  },
+  "authors": [
+  
+  ],
+  "minimum-stability": "stable",
+  "require": {
+    "php": ">=5.4.0",
+    "yiisoft/yii2": "~2.0.0"
+  },
+  "require-dev": {
+  
+  },
+  "autoload": {
+    "psr-4": {
+      "grnrbt\\materializedPath\\": ""
+    }
+  }
+}
