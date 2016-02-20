@@ -17,6 +17,6 @@ trait MaterializedPathQueryTrait
         /** @var \yii\db\ActiveQuery $this */
         $class = $this->modelClass;
         $model = new $class;
-        return $this->andWhere(['=', "array_length({$model->pathColumn}, 1)", 1]);
+        return $this->andWhere(['=', "array_length({$model->getPathColumn()}, 1)", 1]);
     }
 }

@@ -35,7 +35,7 @@ class MaterializedPathBehavior extends Behavior
     public $positionAttribute = 'position';
 
     /** @var int */
-    public $step = 10;
+    public $step = 100;
 
     /** @var int */
     protected $operation;
@@ -54,6 +54,14 @@ class MaterializedPathBehavior extends Behavior
 
     /** @var string */
     protected $treeColumn;
+
+    /**
+     * @return string
+     */
+    public function getPathColumn()
+    {
+        return $this->pathColumn;
+    }
 
     /**
      * @inheritdoc
@@ -383,43 +391,32 @@ class MaterializedPathBehavior extends Behavior
         }
     }
 
-    /**
-     * @throws Exception
-     */
     public function afterInsert()
     {
         if ($this->operation === self::OPERATION_MAKE_ROOT &&
             $this->treeAttribute !== null &&
             $this->owner->{$this->treeAttribute} === null
         ) {
-            $id = $this->owner->getPrimaryKey();
-            $this->owner->{$this->treeAttribute} = $id;
-            $primaryKey = $this->owner->primaryKey();
-            if (!isset($primaryKey[0])) {
-                throw new Exception('"' . $this->owner->className() . '" must have a primary key.');
-            }
-            $this->owner->updateAll([$this->treeAttribute => $id], [$primaryKey[0] => $id]);
+            $key = $this->owner->{$this->keyAttribute};
+            $this->owner->{$this->treeAttribute} = $key;
+            $this->owner->updateAll([$this->treeAttribute => $key], [$this->keyAttribute => $key]);
         }
 
-        if ($this->owner->{$this->pathAttribute} === null) {
-            $primaryKey = $this->owner->primaryKey();
-            if (!isset($primaryKey[0])) {
-                throw new Exception('"' . $this->owner->className() . '" must have a primary key.');
-            }
-            $id = $this->owner->getPrimaryKey();
+        if ($this->owner->{$this->pathAttribute} === $this->pathArrayToStr([])) {
+            $key = $this->owner->{$this->keyAttribute};
             if ($this->operation === self::OPERATION_MAKE_ROOT) {
-                $path = $id;
+                $path = $this->pathArrayToStr([$key]);
             } else {
                 if ($this->operation === self::OPERATION_INSERT_BEFORE || $this->operation === self::OPERATION_INSERT_AFTER) {
                     $path = $this->node->getParentPath();
                 } else {
                     $path = $this->node->{$this->pathAttribute};
                 }
-                $path[] = $id;
+                $path[] = $key;
                 $path = $this->pathArrayToStr($path);
             }
             $this->owner->{$this->pathAttribute} = $path;
-            $this->owner->updateAll([$this->pathAttribute => $path], [$primaryKey[0] => $id]);
+            $this->owner->updateAll([$this->pathAttribute => $path], [$this->keyAttribute => $key]);
         }
         $this->operation = null;
         $this->node = null;
@@ -589,9 +586,9 @@ class MaterializedPathBehavior extends Behavior
     protected function makeRootInternal()
     {
         $key = $this->owner->{$this->keyAttribute};
-        if ($key !== null) {
-            $this->owner->{$this->pathAttribute} = "{" . $key . "}";
-        }
+        $this->owner->{$this->pathAttribute} = $key !== null
+            ? $this->pathArrayToStr([$key])
+            : $this->pathArrayToStr([]);
         if ($this->positionAttribute !== null) {
             $this->owner->{$this->positionAttribute} = 0;
         }
