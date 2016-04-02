@@ -458,10 +458,37 @@ class MaterializedPathBehavior extends Behavior
      */
     public function reorderChildren($inBackground = false)
     {
-        \Yii::$app->getDb()->transaction(function () {
-            foreach ($this->getChildren()->each() as $i => $child) {
-                $child->{$this->positionAttribute} = ($i - 1) * $this->step;
-                $child->save();
+        \Yii::$app->getDb()->transaction(function () use ($inBackground) {
+            if ($inBackground) {
+                $table = $this->owner->tableName();
+                $keyField = $this->keyAttribute;
+                $pathField = $this->pathAttribute;
+                $positionField = $this->positionAttribute;
+                $parentKey = $this->owner->{$this->keyAttribute};
+                $step = $this->step;
+                \Yii::$app->getDb()->createCommand("
+                    DO $$
+                      DECLARE
+                        pos integer := 0;
+                        row record;
+                      BEGIN
+                        FOR row in
+                          SELECT {$keyField}
+                          FROM {$table}
+                          WHERE {$pathField} && array[{$parentKey}] AND {$keyField} != {$parentKey}
+                        LOOP
+                          UPDATE {$table} set {$positionField} = pos * {$step}
+                          WHERE {$keyField} = row.{$keyField};
+
+                          pos := pos + 1;
+                        END LOOP;
+                    END $$;
+                ")->execute();
+            } else {
+                foreach ($this->getChildren()->each() as $i => $child) {
+                    $child->{$this->positionAttribute} = ($i - 1) * $this->step;
+                    $child->save();
+                }
             }
         });
     }
