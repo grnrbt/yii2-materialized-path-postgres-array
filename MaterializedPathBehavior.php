@@ -7,7 +7,6 @@ use yii\base\Exception;
 use yii\base\NotSupportedException;
 use yii\db\ActiveRecord;
 use yii\db\Expression;
-use yii\db\Query;
 
 /**
  * Materialized Path behavior for Yii2 uses postgres arrays.
@@ -365,6 +364,9 @@ class MaterializedPathBehavior extends Behavior
         if ($this->node !== null && !$this->node->getIsNewRecord()) {
             $this->node->refresh();
         }
+        if ($this->owner->getIsNewRecord()) {
+            $this->owner->{$this->pathAttribute} = $this->pathArrayToStr([]);
+        }
         switch ($this->operation) {
             case self::OPERATION_MAKE_ROOT:
                 $this->makeRootInternal();
@@ -410,7 +412,7 @@ class MaterializedPathBehavior extends Behavior
                 if ($this->operation === self::OPERATION_INSERT_BEFORE || $this->operation === self::OPERATION_INSERT_AFTER) {
                     $path = $this->node->getParentPath();
                 } else {
-                    $path = $this->node->{$this->pathAttribute};
+                    $path = $this->node->getPath();
                 }
                 $path[] = $key;
                 $path = $this->pathArrayToStr($path);
@@ -450,9 +452,11 @@ class MaterializedPathBehavior extends Behavior
     /**
      * Reorders children with values of $sortAttribute begin from zero.
      *
+     * @param bool $inBackground = false Run reordering in single query bypassing models.
+     * NOTE: position will be not update in models. Only in database.
      * @throws \Exception
      */
-    public function reorderChildren()
+    public function reorderChildren($inBackground = false)
     {
         \Yii::$app->getDb()->transaction(function () {
             foreach ($this->getChildren()->each() as $i => $child) {
@@ -522,62 +526,6 @@ class MaterializedPathBehavior extends Behavior
         if ($this->node->isDescendantOf($this->owner)) {
             throw new Exception('Can not move a node when the target node is child.');
         }
-    }
-
-    /**
-     * @param int $to
-     * @param bool $forward
-     */
-    protected function moveTo($to, $forward)
-    {
-        $tableName = $this->owner->tableName();
-        $nodeParentKey = $this->node->getParentKey();
-        $ownerParentKey = $this->owner->getParentKey();
-        $nodeLevel = $this->node->getLevel();
-        $ownerLevel = $this->owner->getLevel();
-
-        $this->owner->{$this->positionAttribute} = $to + ($forward ? 1 : -1);
-        $joinCondition = [
-            'and',
-            $this->getChildrenCondition($nodeParentKey, 'n'),
-            [
-                $this->getLevelCondition($ownerLevel, 'n'),
-                "n.{$this->positionAttribute}" => new Expression($this->positionColumn . ($forward ? '+' : '-') . " 1"),
-            ],
-        ];
-        if (!$this->owner->getIsNewRecord()) {
-            $joinCondition[] = ['!=', "n.{$this->pathAttribute}", $this->owner->{$this->pathAttribute}];
-        }
-        if ($this->treeAttribute !== null) {
-            $joinCondition[] = ["n.{$this->treeAttribute}" => new Expression($this->treeColumn)];
-        }
-        $unallocated = (new Query())
-            ->select($this->positionColumn)
-            ->from($tableName)
-            ->leftJoin("{$tableName} n", $joinCondition)
-            ->where([
-                'and',
-                $this->getChildrenCondition($ownerParentKey),
-                $this->getTreeCondition(),
-                [$forward ? '>=' : '<=', $this->positionColumn, $to],
-                [
-                    $this->getLevelCondition($nodeLevel),
-                    "n.{$this->positionAttribute}" => null,
-                ],
-            ])
-            ->orderBy([$this->positionColumn => $forward ? SORT_ASC : SORT_DESC])
-            ->limit(1)
-            ->scalar($this->owner->getDb());
-        $this->owner->updateAll(
-            [$this->positionAttribute => new Expression($this->positionAttribute . ($forward ? '+' : '-') . " 1")],
-            [
-                'and',
-                $this->getChildrenCondition($nodeParentKey),
-                $this->getTreeCondition(),
-                $this->getLevelCondition($nodeLevel),
-                ['between', $this->positionAttribute, $forward ? $to + 1 : $unallocated, $forward ? $unallocated : $to - 1],
-            ]
-        );
     }
 
     /**
@@ -654,7 +602,13 @@ class MaterializedPathBehavior extends Behavior
             $this->owner->{$this->treeAttribute} = $this->node->{$this->treeAttribute};
         }
         if ($this->positionAttribute !== null) {
-            $this->moveTo($this->node->{$this->positionAttribute}, $forward);
+            $position = $this->node->{$this->positionAttribute};
+            if ($forward) {
+                $position++;
+            } else {
+                $position--;
+            }
+            $this->owner->{$this->positionAttribute} = $position;
         }
     }
 
@@ -742,12 +696,12 @@ class MaterializedPathBehavior extends Behavior
      * @param int $level
      * @param string $sign
      * @param string $tableName = null
-     * @return array
+     * @return string
      */
     protected function getLevelCondition($level, $sign = "=", $tableName = null)
     {
         $pathColumn = $tableName === null ? $this->pathColumn : "{$tableName}.{$this->pathAttribute}";
-        return [$sign, "array_length({$pathColumn}, 1)", $level];
+        return "array_length({$pathColumn}, 1) {$sign} {$level}";
     }
 
     /**
