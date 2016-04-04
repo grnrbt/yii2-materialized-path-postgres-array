@@ -6,6 +6,6 @@ use yii\base\Event;
 
 class ChildrenOrderChangedEvent extends Event
 {
-    /** ActiveRecord|MaterializedPathBehavior @var */
+    /** @var MaterializedPathBehavior */
     public $parent;
 }

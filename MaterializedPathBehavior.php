@@ -41,6 +41,13 @@ class MaterializedPathBehavior extends Behavior
     /** @var int */
     public $step = 100;
 
+    /**
+     * Child nodes will be reordering on changes.
+     *
+     * @var bool
+     */
+    public $autoChildrenReorder = true;
+
     /** @var int */
     protected $operation;
 
@@ -72,7 +79,7 @@ class MaterializedPathBehavior extends Behavior
      */
     public function events()
     {
-        return [
+        $handlers = [
             ActiveRecord::EVENT_BEFORE_INSERT => 'beforeSave',
             ActiveRecord::EVENT_AFTER_INSERT => 'afterInsert',
             ActiveRecord::EVENT_BEFORE_UPDATE => 'beforeSave',
@@ -80,6 +87,10 @@ class MaterializedPathBehavior extends Behavior
             ActiveRecord::EVENT_BEFORE_DELETE => 'beforeDelete',
             ActiveRecord::EVENT_AFTER_DELETE => 'afterDelete',
         ];
+        if ($this->autoChildrenReorder === true) {
+            $handlers[static::EVENT_CHILDREN_ORDER_CHANGED] = 'onChildrenOrderChanged';
+        }
+        return $handlers;
     }
 
     /**
@@ -464,7 +475,7 @@ class MaterializedPathBehavior extends Behavior
      * NOTE: position will be not update in models. Only in database.
      * @throws \Exception
      */
-    public function reorderChildren($inBackground = false)
+    public function reorderChildren($inBackground = true)
     {
         \Yii::$app->getDb()->transaction(function () use ($inBackground) {
             if ($inBackground) {
@@ -495,7 +506,7 @@ class MaterializedPathBehavior extends Behavior
             } else {
                 foreach ($this->getChildren()->each() as $i => $child) {
                     $child->{$this->positionAttribute} = ($i - 1) * $this->step;
-                    $child->save();
+                    $child->save(false, [$this->positionAttribute]);
                 }
             }
         });
@@ -783,5 +794,10 @@ class MaterializedPathBehavior extends Behavior
                 'parent' => $this->owner->parent,
             ]));
         }
+    }
+
+    public function onChildrenOrderChanged(ChildrenOrderChangedEvent $event)
+    {
+        $event->parent->reorderChildren(true);
     }
 }
