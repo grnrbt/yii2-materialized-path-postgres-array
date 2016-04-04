@@ -3,6 +3,8 @@
 namespace app\tests\unit;
 
 use app\mat\tests\unit\models\TestTree;
+use grnrbt\materializedPath\MaterializedPathBehavior;
+use yii\base\Event;
 
 class MaterializedPathBehaviorTest extends DbTestCase
 {
@@ -138,5 +140,39 @@ class MaterializedPathBehaviorTest extends DbTestCase
         $this->assertEquals($node3->parent->id, $root->id);
         $this->assertGreaterThan($node1->position, $node3->position);
         $this->assertGreaterThan($node3->position, $node2->position);
+    }
+
+    public function testEventFiring()
+    {
+        TestTree::deleteAll();
+        $root = new TestTree(['name' => 'root']);
+        $this->assertTrue($root->makeRoot()->save());
+
+        $eventParentId = null;
+        Event::on(TestTree::class,
+            MaterializedPathBehavior::EVENT_CHILDREN_ORDER_CHANGED,
+            function ($event) use (&$eventParentId) {
+                $eventParentId=$event->parent->id;
+            }
+        );
+
+        $node1 = new TestTree(['name' => 'node 1']);
+        $this->assertTrue($node1->appendTo($root)->save());
+        $this->assertNull($eventParentId);
+
+        $node2 = new TestTree(['name' => 'node 2']);
+        $this->assertTrue($node2->prependTo($root)->save());
+        $this->assertEquals($eventParentId, $root->id);
+        $eventParentId = null;
+
+        $node3 = new TestTree(['name' => 'node 3']);
+        $this->assertTrue($node3->insertBefore($node1)->save());
+        $this->assertEquals($eventParentId, $root->id);
+        $eventParentId = null;
+
+        $node4 = new TestTree(['name' => 'node 4']);
+        $this->assertTrue($node4->insertAfter($node1)->save());
+        $this->assertEquals($eventParentId, $root->id);
+        $eventParentId = null;
     }
 }

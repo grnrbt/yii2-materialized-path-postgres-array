@@ -3,6 +3,7 @@
 namespace grnrbt\materializedPath;
 
 use yii\base\Behavior;
+use yii\base\Event;
 use yii\base\Exception;
 use yii\base\NotSupportedException;
 use yii\db\ActiveRecord;
@@ -20,12 +21,16 @@ class MaterializedPathBehavior extends Behavior
     const OPERATION_APPEND_TO = 3;
     const OPERATION_INSERT_BEFORE = 4;
     const OPERATION_INSERT_AFTER = 5;
+    /**
+     * Event which fire on changing of children's order.
+     */
+    const EVENT_CHILDREN_ORDER_CHANGED = 'childrenOrderChanged';
 
     /** @var string */
     public $pathAttribute = 'path';
 
     /** @var string */
-    public $keyAttribute;
+    public $keyAttribute = 'id';
 
     /** @var string */
     public $treeAttribute;
@@ -307,7 +312,7 @@ class MaterializedPathBehavior extends Behavior
      */
     public function makeRoot()
     {
-        $this->operation = self::OPERATION_MAKE_ROOT;
+        $this->operation = static::OPERATION_MAKE_ROOT;
         return $this->owner;
     }
 
@@ -317,7 +322,7 @@ class MaterializedPathBehavior extends Behavior
      */
     public function prependTo($node)
     {
-        $this->operation = self::OPERATION_PREPEND_TO;
+        $this->operation = static::OPERATION_PREPEND_TO;
         $this->node = $node;
         return $this->owner;
     }
@@ -328,7 +333,7 @@ class MaterializedPathBehavior extends Behavior
      */
     public function appendTo($node)
     {
-        $this->operation = self::OPERATION_APPEND_TO;
+        $this->operation = static::OPERATION_APPEND_TO;
         $this->node = $node;
         return $this->owner;
     }
@@ -339,7 +344,7 @@ class MaterializedPathBehavior extends Behavior
      */
     public function insertBefore($node)
     {
-        $this->operation = self::OPERATION_INSERT_BEFORE;
+        $this->operation = static::OPERATION_INSERT_BEFORE;
         $this->node = $node;
         return $this->owner;
     }
@@ -350,7 +355,7 @@ class MaterializedPathBehavior extends Behavior
      */
     public function insertAfter($node)
     {
-        $this->operation = self::OPERATION_INSERT_AFTER;
+        $this->operation = static::OPERATION_INSERT_AFTER;
         $this->node = $node;
         return $this->owner;
     }
@@ -368,19 +373,19 @@ class MaterializedPathBehavior extends Behavior
             $this->owner->{$this->pathAttribute} = $this->pathArrayToStr([]);
         }
         switch ($this->operation) {
-            case self::OPERATION_MAKE_ROOT:
+            case static::OPERATION_MAKE_ROOT:
                 $this->makeRootInternal();
                 break;
-            case self::OPERATION_PREPEND_TO:
+            case static::OPERATION_PREPEND_TO:
                 $this->insertIntoInternal(false);
                 break;
-            case self::OPERATION_APPEND_TO:
+            case static::OPERATION_APPEND_TO:
                 $this->insertIntoInternal(true);
                 break;
-            case self::OPERATION_INSERT_BEFORE:
+            case static::OPERATION_INSERT_BEFORE:
                 $this->insertNearInternal(false);
                 break;
-            case self::OPERATION_INSERT_AFTER:
+            case static::OPERATION_INSERT_AFTER:
                 $this->insertNearInternal(true);
                 break;
             default:
@@ -395,7 +400,7 @@ class MaterializedPathBehavior extends Behavior
 
     public function afterInsert()
     {
-        if ($this->operation === self::OPERATION_MAKE_ROOT &&
+        if ($this->operation === static::OPERATION_MAKE_ROOT &&
             $this->treeAttribute !== null &&
             $this->owner->{$this->treeAttribute} === null
         ) {
@@ -406,10 +411,10 @@ class MaterializedPathBehavior extends Behavior
 
         if ($this->owner->{$this->pathAttribute} === $this->pathArrayToStr([])) {
             $key = $this->owner->{$this->keyAttribute};
-            if ($this->operation === self::OPERATION_MAKE_ROOT) {
+            if ($this->operation === static::OPERATION_MAKE_ROOT) {
                 $path = $this->pathArrayToStr([$key]);
             } else {
-                if ($this->operation === self::OPERATION_INSERT_BEFORE || $this->operation === self::OPERATION_INSERT_AFTER) {
+                if ($this->operation === static::OPERATION_INSERT_BEFORE || $this->operation === static::OPERATION_INSERT_AFTER) {
                     $path = $this->node->getParentPath();
                 } else {
                     $path = $this->node->getPath();
@@ -420,6 +425,8 @@ class MaterializedPathBehavior extends Behavior
             $this->owner->{$this->pathAttribute} = $path;
             $this->owner->updateAll([$this->pathAttribute => $path], [$this->keyAttribute => $key]);
         }
+
+        $this->fireEvent();
         $this->operation = null;
         $this->node = null;
     }
@@ -430,6 +437,7 @@ class MaterializedPathBehavior extends Behavior
     public function afterUpdate($event)
     {
         $this->moveNode($event->changedAttributes);
+        $this->fireEvent();
         $this->operation = null;
         $this->node = null;
     }
@@ -762,5 +770,18 @@ class MaterializedPathBehavior extends Behavior
     protected function pathArrayToStr($path)
     {
         return "{" . implode(",", $path) . "}";
+    }
+
+    protected function fireEvent()
+    {
+        if (
+            $this->operation === static::OPERATION_PREPEND_TO ||
+            $this->operation === static::OPERATION_INSERT_AFTER ||
+            $this->operation === static::OPERATION_INSERT_BEFORE
+        ) {
+            Event::trigger(get_class($this->owner), static::EVENT_CHILDREN_ORDER_CHANGED, new ChildrenOrderChangedEvent([
+                'parent' => $this->owner->parent,
+            ]));
+        }
     }
 }
