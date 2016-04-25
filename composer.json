@@ -1,6 +1,7 @@
 {
   "name": "grnrbt/yii2-materialized-path-postgres-array",
   "description": "Yii2 behavior for Materialized Path using PostgreSQL arrays.",
+  "version":"0.1.0",
   "keywords": [
     "yii2",
     "materialized path",
@@ -17,9 +18,13 @@
     "source": "https://github.com/grnrbt/yii2-materialized-path-postgres-array"
   },
   "authors": [
-  
+    {
+      "name": "Viktor Pikaev",
+      "email": "haruatari@gmail.com",
+      "homepage": "http://haru-atari.com"
+    }
   ],
-  "minimum-stability": "stable",
+  "minimum-stability": "dev",
   "require": {
     "php": ">=5.4.0",
     "yiisoft/yii2": "~2.0.0"
