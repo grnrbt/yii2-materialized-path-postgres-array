@@ -1,6 +1,6 @@
 <?php
 
-namespace app\tests\unit;
+namespace grnrbt\tests\unit;
 
 class DbTestCase extends \yii\codeception\DbTestCase
 {

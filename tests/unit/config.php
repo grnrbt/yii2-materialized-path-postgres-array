@@ -1,14 +1,13 @@
 <?php
-
 return [
-    'id' => 'grnrbt/yii2-materialized-path-postgres-array',
-    'basePath' => __DIR__ . '/../..',
+    'id' => 'id',
+    'basePath' => __DIR__,
     'components' => [
         'db' => [
             'class' => \yii\db\Connection::class,
-            'dsn' => 'pgsql:host=localhost;dbname=grass',
-            'username' => 'postgres',
-            'password' => '',
+            'dsn' => 'pgsql:host=localhost;dbname=grass_test',
+            'username' => 'grass_test',
+            'password' => 'pass',
             'charset' => 'utf8',
         ],
     ],

@@ -1,0 +1,6 @@
+CREATE TABLE tree (
+  id SERIAL PRIMARY KEY,
+  path INTEGER[],
+  position INTEGER NOT NULL,
+  name VARCHAR(255) NOT NULL
+);

@@ -1,16 +1,21 @@
 actor: Tester
 paths:
     tests: tests
-    log: tests/output
-    data: tests/data
-    helpers: tests/helpers
+    log: tests/_output
+    data: tests/_data
+    support: tests/_support
+    envs: tests/_envs
 settings:
-    bootstrap: bootstrap.php
-    suite_class: \PHPUnit_Framework_TestSuite
+    bootstrap: _bootstrap.php
+    colors: екгу
     memory_limit: 1024M
-    log: false
-    colors: true
-config:
-    # the entry script URL (without host info) for functional and acceptance tests
-    # PLEASE ADJUST IT TO THE ACTUAL ENTRY SCRIPT URL
-    test_entry_url: /index-test.php
+extensions:
+    enabled:
+        - Codeception\Extension\RunFailed
+modules:
+    config:
+        Db:
+            dsn: 'pgsql:host=localhost;dbname=grass_test'
+            user: 'grass_test'
+            password: 'pass'
+            dump: tests/_data/dump.sql

@@ -13,6 +13,9 @@ use yii\db\Expression;
  * Materialized Path behavior for Yii2 uses postgres arrays.
  *
  * @property ActiveRecord|MaterializedPathBehavior $owner
+ * @property ActiveRecord|MaterializedPathBehavior $parent
+ * @property ActiveRecord|MaterializedPathBehavior[] $parents
+ * @property ActiveRecord|MaterializedPathBehavior[] $children
  */
 class MaterializedPathBehavior extends Behavior
 {
@@ -382,7 +385,10 @@ class MaterializedPathBehavior extends Behavior
         if ($this->node !== null && !$this->node->getIsNewRecord()) {
             $this->node->refresh();
         }
-        if ($this->owner->getIsNewRecord()) {
+        if ($this->owner->getIsNewRecord() && $this->operation === null) {
+            $this->operation = static::OPERATION_MAKE_ROOT;
+        }
+        if ($this->owner->{$this->pathAttribute} === null) {
             $this->owner->{$this->pathAttribute} = $this->pathArrayToStr([]);
         }
         switch ($this->operation) {
@@ -402,12 +408,10 @@ class MaterializedPathBehavior extends Behavior
                 $this->insertNearInternal(true);
                 break;
             default:
-                if ($this->owner->getIsNewRecord()) {
-                    throw new NotSupportedException('Method "' . $this->owner->className() . '::insert" is not supported for inserting new nodes.');
-                }
                 $path = $this->owner->getParentPath();
                 $path[] = $this->owner->{$this->keyAttribute};
                 $this->owner->{$this->pathAttribute} = $this->pathArrayToStr($path);
+                break;
         }
     }
 

@@ -1,11 +1,11 @@
 <?php
 
-namespace app\mat\tests\unit;
+namespace unit\models;
 
 use grnrbt\materializedPath\MaterializedPathQueryTrait;
 use yii\db\ActiveQuery;
 
-class TestTreeQuery extends ActiveQuery
+class TreeQuery extends ActiveQuery
 {
     use MaterializedPathQueryTrait;
 }
