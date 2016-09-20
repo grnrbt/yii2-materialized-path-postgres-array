@@ -15,7 +15,7 @@ extensions:
 modules:
     config:
         Db:
-            dsn: 'pgsql:host=localhost;dbname=grass_test'
-            user: 'grass_test'
+            dsn: 'pgsql:host=localhost;dbname=mp_test'
+            user: 'mp_test'
             password: 'pass'
             dump: tests/_data/dump.sql
