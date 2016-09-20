@@ -37,7 +37,7 @@
   },
   "autoload": {
     "psr-4": {
-      "grnrbt\\materializedPath\\": ""
+      "grnrbt\\materializedPath\\": "src/"
     }
   }
 }
