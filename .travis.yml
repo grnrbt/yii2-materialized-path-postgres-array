@@ -10,8 +10,8 @@ addons:
   postgresql: "9.3"
 
 before_script:
-  - psql -U postgres -c 'CREATE ROLE mp_test LOGIN PASSWORD \'pass\';';
-  - psql -U postgres -c 'CREATE DATABASE mp_test WITH OWNER mp_test ENCODING \'UTF8\';';
+  - psql -U postgres -c "CREATE ROLE mp_test LOGIN PASSWORD 'pass';";
+  - psql -U postgres -c "CREATE DATABASE mp_test WITH OWNER mp_test ENCODING 'UTF8';";
 
 script:
   - composer install
