@@ -2,6 +2,8 @@
 
 namespace grnrbt\materializedPath;
 
+use \yii\db\ActiveRecord;
+
 /**
  * Trait for ActiveRecords uses MaterializedPathBehavior.
  *
@@ -16,6 +18,7 @@ trait MaterializedPathQueryTrait
     {
         /** @var \yii\db\ActiveQuery $this */
         $class = $this->modelClass;
+        /** @var MaterializedPathBehavior|ActiveRecord $model */
         $model = new $class;
         return $this->andWhere(['=', "array_length({$model->getPathColumn()}, 1)", 1]);
     }

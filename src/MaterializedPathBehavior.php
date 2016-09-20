@@ -21,24 +21,30 @@ class MaterializedPathBehavior extends Behavior
     const OPERATION_APPEND_TO = 3;
     const OPERATION_INSERT_BEFORE = 4;
     const OPERATION_INSERT_AFTER = 5;
+
     /**
      * Event which fire on changing of children's order.
      */
     const EVENT_CHILDREN_ORDER_CHANGED = 'childrenOrderChanged';
 
-    /** @var string */
+    /**
+     * @var string
+     */
     public $pathAttribute = 'path';
 
-    /** @var string */
+    /**
+     * @var string
+     */
     public $keyAttribute = 'id';
 
-    /** @var string */
-    public $treeAttribute;
-
-    /** @var string */
+    /**
+     * @var string
+     */
     public $positionAttribute = 'position';
 
-    /** @var int */
+    /**
+     * @var int
+     */
     public $step = 100;
 
     /**
@@ -48,23 +54,30 @@ class MaterializedPathBehavior extends Behavior
      */
     public $autoChildrenReorder = true;
 
-    /** @var int */
+    /**
+     * @var int
+     */
     protected $operation;
 
-    /** @var ActiveRecord|MaterializedPathBehavior */
+    /**
+     * @var ActiveRecord|MaterializedPathBehavior
+     */
     protected $node;
 
-    /** @var string */
+    /**
+     * @var string
+     */
     protected $keyColumn;
 
-    /** @var string */
+    /**
+     * @var string
+     */
     protected $pathColumn;
 
-    /** @var string */
+    /**
+     * @var string
+     */
     protected $positionColumn;
-
-    /** @var string */
-    protected $treeColumn;
 
     /**
      * @return string
@@ -116,7 +129,6 @@ class MaterializedPathBehavior extends Behavior
         if ($this->owner->isRoot()) {
             return null;
         }
-
         $path = $this->owner->getPath();
         array_pop($path);
         return $asArray ? $path : $this->pathArrayToStr($path);
@@ -150,7 +162,6 @@ class MaterializedPathBehavior extends Behavior
         $this->keyColumn = "{$table}.{$this->keyAttribute}";
         $this->pathColumn = "{$table}.{$this->pathAttribute}";
         $this->positionColumn = "{$table}.{$this->positionAttribute}";
-        $this->treeColumn = "{$table}.{$this->treeAttribute}";
 
         parent::attach($owner);
     }
@@ -174,7 +185,6 @@ class MaterializedPathBehavior extends Behavior
         $query = $this->owner->find();
         $query
             ->andWhere([$this->keyColumn => $path])
-            ->andWhere($this->getTreeCondition())
             ->addOrderBy([$this->pathColumn => SORT_ASC]);
         $query->multiple = true;
         return $query;
@@ -205,7 +215,6 @@ class MaterializedPathBehavior extends Behavior
         /** @var \yii\db\ActiveQuery $query */
         $query
             ->andWhere([$this->keyColumn => $path])
-            ->andWhere($this->getTreeCondition())
             ->limit(1);
         $query->multiple = false;
         return $query;
@@ -232,7 +241,6 @@ class MaterializedPathBehavior extends Behavior
             $query->andWhere($this->getLevelCondition($maxLevel, "<="));
         }
         $query
-            ->andWhere($this->getTreeCondition())
             ->addOrderBy([
                 "array_length({$this->pathColumn}, 1)" => SORT_ASC,
                 "{$this->positionColumn}" => SORT_ASC,
@@ -287,14 +295,11 @@ class MaterializedPathBehavior extends Behavior
         $key = $node->{$this->keyAttribute};
         $path = $this->owner->getPath();
         $result = in_array($key, $path);
-        if ($result && $this->treeAttribute !== null) {
-            $result = $this->owner->{$this->treeAttribute} === $node->{$this->treeAttribute};
-        }
         return $result;
     }
 
     /**
-     * @param MaterializedPathBehavior $node
+     * @param ActiveRecord|MaterializedPathBehavior $node
      * @return bool
      */
     public function isChildOf($node)
@@ -304,9 +309,6 @@ class MaterializedPathBehavior extends Behavior
         }
 
         $result = $node->{$this->keyAttribute} == $this->owner->getParentKey();
-        if ($result && $this->treeAttribute !== null) {
-            $result = $this->owner->{$this->treeAttribute} === $node->{$this->treeAttribute};
-        }
         return $result;
     }
 
@@ -411,15 +413,6 @@ class MaterializedPathBehavior extends Behavior
 
     public function afterInsert()
     {
-        if ($this->operation === static::OPERATION_MAKE_ROOT &&
-            $this->treeAttribute !== null &&
-            $this->owner->{$this->treeAttribute} === null
-        ) {
-            $key = $this->owner->{$this->keyAttribute};
-            $this->owner->{$this->treeAttribute} = $key;
-            $this->owner->updateAll([$this->treeAttribute => $key], [$this->keyAttribute => $key]);
-        }
-
         if ($this->owner->{$this->pathAttribute} === $this->pathArrayToStr([])) {
             $key = $this->owner->{$this->keyAttribute};
             if ($this->operation === static::OPERATION_MAKE_ROOT) {
@@ -519,6 +512,7 @@ class MaterializedPathBehavior extends Behavior
      */
     public function populateTree($depth = null)
     {
+        /** @var ActiveRecord|MaterializedPathBehavior $nodes */
         $nodes = $this
             ->getDescendants($depth)
             ->indexBy($this->keyAttribute)
@@ -585,13 +579,6 @@ class MaterializedPathBehavior extends Behavior
         if ($this->positionAttribute !== null) {
             $this->owner->{$this->positionAttribute} = 0;
         }
-        if (
-            $this->treeAttribute !== null &&
-            !$this->owner->getDirtyAttributes([$this->treeAttribute]) &&
-            !$this->owner->getIsNewRecord()
-        ) {
-            $this->owner->{$this->treeAttribute} = $this->owner->getPrimaryKey();
-        }
     }
 
     /**
@@ -608,9 +595,6 @@ class MaterializedPathBehavior extends Behavior
             $path = $this->node->{$this->pathAttribute};
             $path[] = $key;
             $this->owner->{$this->pathAttribute} = $this->pathArrayToStr($path);
-        }
-        if ($this->treeAttribute !== null) {
-            $this->owner->{$this->treeAttribute} = $this->node->{$this->treeAttribute};
         }
         if ($this->positionAttribute !== null) {
             $to = $this->node->getChildren()->orderBy(null);
@@ -643,9 +627,6 @@ class MaterializedPathBehavior extends Behavior
             $path[] = $key;
             $this->owner->{$this->pathAttribute} = $this->pathArrayToStr($path);
         }
-        if ($this->treeAttribute !== null) {
-            $this->owner->{$this->treeAttribute} = $this->node->{$this->treeAttribute};
-        }
         if ($this->positionAttribute !== null) {
             $position = $this->node->{$this->positionAttribute};
             if ($forward) {
@@ -670,12 +651,6 @@ class MaterializedPathBehavior extends Behavior
         $params = [];
 
         $condition = ['and', "{$this->pathColumn} && array[{$this->owner->{$this->keyAttribute}}]"];
-        if ($this->treeAttribute !== null) {
-            $tree = isset($changedAttributes[$this->treeAttribute])
-                ? $changedAttributes[$this->treeAttribute]
-                : $this->owner->{$this->treeAttribute};
-            $condition[] = [$this->treeAttribute => $tree];
-        }
 
         if (isset($changedAttributes[$this->pathAttribute])) {
             $newParentPath = $this->owner->getParentPath(false);
@@ -683,9 +658,6 @@ class MaterializedPathBehavior extends Behavior
             $update['path'] = new Expression("{$newParentPath} || {$this->pathAttribute}[{$oldParentLevel}:array_length({$this->pathAttribute}, 1)]");
             $params[':pathOld'] = $oldPath;
             $params[':pathNew'] = $this->owner->getAttribute($this->pathAttribute);
-        }
-        if ($this->treeAttribute !== null && isset($changedAttributes[$this->treeAttribute])) {
-            $update[$this->treeAttribute] = $this->owner->{$this->treeAttribute};
         }
         if (!empty($update)) {
             $this->owner->updateAll($update, $condition, $params);
@@ -701,6 +673,7 @@ class MaterializedPathBehavior extends Behavior
     {
         $path = $this->owner->getParentPath();
         if ($path === null) {
+            // TODO: fix it.
             return [];
         }
         $keysStr = implode(",", $path);
@@ -710,7 +683,6 @@ class MaterializedPathBehavior extends Behavior
         $query
             ->andWhere("{$this->pathColumn} && array[{$keysStr}]")
             ->andWhere($this->getLevelCondition($this->owner->getLevel()))
-            ->andWhere($this->getTreeCondition())
             ->limit(1);
 
         if ($order === "prev") {
@@ -727,14 +699,6 @@ class MaterializedPathBehavior extends Behavior
         }
         $query->multiple = false;
         return $query;
-    }
-
-    /**
-     * @return array
-     */
-    protected function getTreeCondition()
-    {
-        return $this->treeAttribute !== null ? [$this->treeColumn => $this->owner->{$this->treeAttribute}] : [];
     }
 
     /**

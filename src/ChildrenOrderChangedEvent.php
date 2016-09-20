@@ -3,9 +3,10 @@
 namespace grnrbt\materializedPath;
 
 use yii\base\Event;
+use yii\db\ActiveRecord;
 
 class ChildrenOrderChangedEvent extends Event
 {
-    /** @var MaterializedPathBehavior */
+    /** @var MaterializedPathBehavior|ActiveRecord */
     public $parent;
 }
