@@ -471,14 +471,14 @@ class MaterializedPathBehavior extends Behavior
     /**
      * Reorders children with values of $sortAttribute begin from zero.
      *
-     * @param bool $inBackground = false Run reordering in single query bypassing models.
+     * @param bool $asSingleQuery = true Run reordering in single query bypassing models.
      * NOTE: position will be not update in models. Only in database.
      * @throws \Exception
      */
-    public function reorderChildren($inBackground = true)
+    public function reorderChildren($asSingleQuery = true)
     {
-        \Yii::$app->getDb()->transaction(function () use ($inBackground) {
-            if ($inBackground) {
+        \Yii::$app->getDb()->transaction(function () use ($asSingleQuery) {
+            if ($asSingleQuery) {
                 $table = $this->owner->tableName();
                 $keyField = $this->keyAttribute;
                 $pathField = $this->pathAttribute;
@@ -498,7 +498,6 @@ class MaterializedPathBehavior extends Behavior
                         LOOP
                           UPDATE {$table} set {$positionField} = pos * {$step}
                           WHERE {$keyField} = row.{$keyField};
-
                           pos := pos + 1;
                         END LOOP;
                     END $$;
