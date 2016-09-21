@@ -26,19 +26,28 @@ class MaterializedPathBehaviorTest extends DbTestCase
     {
         Tree::deleteAll();
         $node = new Tree(['name' => 'test node']);
-        $this->assertTrue($node->save());
+        $node->save();
         $this->assertEquals($node->position, 0);
         $this->assertTrue($node->isRoot());
+
+        $node2 = new Tree(['name' => 'test node 2']);
+        $node2->save();
+        $this->assertTrue($node2->isRoot());
+        $this->assertGreaterThan($node->position, $node2->position);
     }
 
     public function testCreateRootNode()
     {
         Tree::deleteAll();
         $node = new Tree(['name' => 'test node']);
-        $node->makeRoot();
-        $this->assertTrue($node->save());
+        $node->makeRoot()->save();
         $this->assertEquals($node->position, 0);
         $this->assertTrue($node->isRoot());
+
+        $node2 = new Tree(['name' => 'test node']);
+        $node2->makeRoot()->save();
+        $this->assertTrue($node2->isRoot());
+        $this->assertGreaterThan($node->position, $node2->position);
     }
 
     public function testAppendTo()
