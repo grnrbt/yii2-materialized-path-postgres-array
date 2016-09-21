@@ -596,7 +596,7 @@ class MaterializedPathBehavior extends Behavior
         $this->checkNode(false);
         $key = $this->owner->{$this->keyAttribute};
         if ($key !== null) {
-            $path = $this->node->{$this->pathAttribute};
+            $path = $this->pathStrToArray($this->node->{$this->pathAttribute});
             $path[] = $key;
             $this->owner->{$this->pathAttribute} = $this->pathArrayToStr($path);
         }
@@ -659,7 +659,7 @@ class MaterializedPathBehavior extends Behavior
         if (isset($changedAttributes[$this->pathAttribute])) {
             $newParentPath = $this->owner->getParentPath(false);
             $oldParentLevel = count($this->pathStrToArray($oldPath)) - 1;
-            $update['path'] = new Expression("{$newParentPath} || {$this->pathAttribute}[{$oldParentLevel}:array_length({$this->pathAttribute}, 1)]");
+            $update['path'] = new Expression("'{$newParentPath}' || {$this->pathAttribute}[{$oldParentLevel}:array_length({$this->pathAttribute}, 1)]");
             $params[':pathOld'] = $oldPath;
             $params[':pathNew'] = $this->owner->getAttribute($this->pathAttribute);
         }

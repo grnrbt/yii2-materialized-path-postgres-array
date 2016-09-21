@@ -39,6 +39,20 @@ class MaterializedPathBehaviorTest extends DbTestCase
         $this->assertGreaterThan($node1->position, $node2->position);
     }
 
+    public function testAppendNodeToSibling()
+    {
+        Tree::deleteAll();
+        $root = new Tree(['name' => 'root']);
+        $root->save();
+        $node1 = new Tree(['name' => 'node 1']);
+        $node1->appendTo($root)->save();
+        $node2 = new Tree(['name' => 'node 2']);
+        $node2->appendTo($root)->save();
+        $node2->appendTo($node1)->save();
+        $this->assertEquals($node2->parent->id, $node1->id);
+        $this->assertEquals($node2->position, 0);
+    }
+
     public function testPrependTo()
     {
         Tree::deleteAll();
