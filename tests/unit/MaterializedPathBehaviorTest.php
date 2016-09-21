@@ -3,11 +3,25 @@
 namespace grnrbt\tests\unit;
 
 use grnrbt\materializedPath\MaterializedPathBehavior;
-use unit\models\Tree;
+use grnrbt\unit\fixtures\TreeFixture;
+use grnrbt\unit\models\Tree;
 use yii\base\Event;
 
+/**
+ * @method Tree tree($key)
+ */
 class MaterializedPathBehaviorTest extends DbTestCase
 {
+    /**
+     * @inheritdoc
+     */
+    public function fixtures()
+    {
+        return [
+            'tree' => TreeFixture::class,
+        ];
+    }
+
     public function testCreateNewNode()
     {
         Tree::deleteAll();
@@ -29,9 +43,7 @@ class MaterializedPathBehaviorTest extends DbTestCase
 
     public function testAppendTo()
     {
-        Tree::deleteAll();
-        $root = new Tree(['name' => 'root']);
-        $root->save();
+        $root = $this->tree('1');
         $node1 = new Tree(['name' => 'node 1']);
         $node1->appendTo($root)->save();
         $node2 = new Tree(['name' => 'node 2']);
@@ -41,9 +53,7 @@ class MaterializedPathBehaviorTest extends DbTestCase
 
     public function testAppendNodeToSibling()
     {
-        Tree::deleteAll();
-        $root = new Tree(['name' => 'root']);
-        $root->save();
+        $root = $this->tree('1');
         $node1 = new Tree(['name' => 'node 1']);
         $node1->appendTo($root)->save();
         $node2 = new Tree(['name' => 'node 2']);
@@ -55,9 +65,7 @@ class MaterializedPathBehaviorTest extends DbTestCase
 
     public function testPrependTo()
     {
-        Tree::deleteAll();
-        $root = new Tree(['name' => 'root']);
-        $root->save();
+        $root = $this->tree('1');
         $node1 = new Tree(['name' => 'node 1']);
         $node1->prependTo($root)->save();
         $node2 = new Tree(['name' => 'node 2']);
@@ -67,9 +75,7 @@ class MaterializedPathBehaviorTest extends DbTestCase
 
     public function testInsertBefore()
     {
-        Tree::deleteAll();
-        $root = new Tree(['name' => 'root']);
-        $root->save();
+        $root = $this->tree('1');
         $node1 = new Tree(['name' => 'node 1']);
         $node1->appendTo($root)->save();
         $node2 = new Tree(['name' => 'node 2']);
@@ -80,9 +86,7 @@ class MaterializedPathBehaviorTest extends DbTestCase
 
     public function testInsertAfter()
     {
-        Tree::deleteAll();
-        $root = new Tree(['name' => 'root']);
-        $root->save();
+        $root = $this->tree('1');
         $node1 = new Tree(['name' => 'node 1']);
         $node1->appendTo($root)->save();
         $node2 = new Tree(['name' => 'node 2']);
@@ -123,26 +127,28 @@ class MaterializedPathBehaviorTest extends DbTestCase
 
     public function testGetParent()
     {
-        Tree::deleteAll();
-        $root = new Tree(['name' => 'root']);
-        $root->save();
-        $node = new Tree(['name' => 'node']);
-        $this->assertTrue($node->appendTo($root)->save());
+        $root = $this->tree('1');
+        $node = $this->tree('1.1');
         $this->assertEquals($node->parent->id, $root->id);
     }
 
     public function testGetParents()
     {
-        Tree::deleteAll();
-        $root = new Tree(['name' => 'root']);
-        $root->save();
-        $node1 = new Tree(['name' => 'node 1']);
-        $node1->appendTo($root)->save();
-        $node2 = new Tree(['name' => 'node 2']);
-        $node2->appendTo($node1)->save();
+        $root = $this->tree('1');
+        $node1 = $this->tree('1.1');
+        $node2 = $this->tree('1.1.1');
         $parents = $node2->parents;
         $this->assertEquals(2, count($parents));
         $this->assertEquals($root->id, $parents[0]->id);
         $this->assertEquals($node1->id, $parents[1]->id);
+    }
+
+    public function testGetRoots()
+    {
+        $roots = Tree::find()->roots()->all();
+        $this->assertEquals(2, count($roots));
+        $this->assertEquals($roots[0]->level, 1);
+        $this->assertEquals($roots[1]->level, 1);
+        $this->assertGreaterThan($roots[0]->position, $roots[1]->position);
     }
 }

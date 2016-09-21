@@ -1,6 +1,6 @@
 <?php
 
-namespace unit\models;
+namespace grnrbt\unit\models;
 
 use grnrbt\materializedPath\MaterializedPathBehavior;
 use yii\db\ActiveRecord;

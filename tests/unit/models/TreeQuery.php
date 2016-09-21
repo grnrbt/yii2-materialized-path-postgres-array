@@ -1,6 +1,6 @@
 <?php
 
-namespace unit\models;
+namespace grnrbt\unit\models;
 
 use grnrbt\materializedPath\MaterializedPathQueryTrait;
 use yii\db\ActiveQuery;
