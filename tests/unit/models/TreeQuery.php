@@ -2,7 +2,7 @@
 
 namespace grnrbt\unit\models;
 
-use grnrbt\materializedPath\MaterializedPathQueryTrait;
+use grnrbt\yii2\materializedPath\MaterializedPathQueryTrait;
 use yii\db\ActiveQuery;
 
 class TreeQuery extends ActiveQuery

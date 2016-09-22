@@ -2,7 +2,7 @@
 
 namespace grnrbt\unit\models;
 
-use grnrbt\materializedPath\MaterializedPathBehavior;
+use grnrbt\yii2\materializedPath\MaterializedPathBehavior;
 use yii\db\ActiveRecord;
 
 /**

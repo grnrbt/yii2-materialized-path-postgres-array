@@ -2,7 +2,7 @@
 
 namespace grnrbt\tests\unit;
 
-use grnrbt\materializedPath\MaterializedPathBehavior;
+use grnrbt\yii2\materializedPath\MaterializedPathBehavior;
 use grnrbt\unit\fixtures\TreeFixture;
 use grnrbt\unit\models\Tree;
 use yii\base\Event;

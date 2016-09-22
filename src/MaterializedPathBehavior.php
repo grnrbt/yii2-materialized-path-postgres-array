@@ -1,6 +1,6 @@
 <?php
 
-namespace grnrbt\materializedPath;
+namespace grnrbt\yii2\materializedPath;
 
 use yii\base\Behavior;
 use yii\base\Event;
