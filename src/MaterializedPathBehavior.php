@@ -653,10 +653,16 @@ class MaterializedPathBehavior extends Behavior
             ? $changedAttributes[$this->pathAttribute]
             : $this->owner->{$this->pathAttribute};
         $update = [];
-        $condition = ['and', "{$this->pathColumn} && array[{$this->owner->{$this->keyAttribute}}]"];
+
+        $condition = [
+            'and',
+            "{$this->pathColumn} && array[{$this->owner->{$this->keyAttribute}}]",
+            "{$this->keyColumn} != {$this->owner->{$this->keyAttribute}}",
+        ];
+
         if (isset($changedAttributes[$this->pathAttribute])) {
             $newParentPath = $this->owner->getParentPath(false);
-            $oldParentLevel = count($this->pathStrToArray($oldPath)) - 1;
+            $oldParentLevel = count($this->pathStrToArray($oldPath));
             $update['path'] = new Expression("'{$newParentPath}' || {$this->pathAttribute}[{$oldParentLevel}:array_length({$this->pathAttribute}, 1)]");
         }
         if (!empty($update)) {
