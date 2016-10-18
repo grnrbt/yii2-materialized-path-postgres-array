@@ -224,7 +224,7 @@ class MaterializedPathBehavior extends Behavior
     }
 
     /**
-     * Returns descendants as plane list.
+     * Returns descendants as plain list.
      *
      * @param int $depth = null
      * @param bool $andSelf = false
