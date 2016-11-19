@@ -20,7 +20,7 @@ trait MaterializedPathQueryTrait
      */
     public function roots()
     {
-        return $this->andWhere(['=', "array_length({$this->getModel()->getPathColumn()}, 1)", 1]);
+        return $this->andWhere(['=', $this->getModel()->getPathColumn(), '{}']);
     }
 
     /**
@@ -73,14 +73,14 @@ trait MaterializedPathQueryTrait
     }
 
     /**
-     * @param MaterializedPathQueryTrait|mixed $node Specified node or its key.
+     * @param MaterializedPathBehavior|mixed $node Specified node or its key.
      * @param int $depth = null
      * @return MaterializedPathQueryTrait|\yii\db\ActiveQuery
      */
     public function parentsOf($node, $depth = null)
     {
         if (is_object($node)) {
-            $path = $node->getParentPath();
+            $path = $node->getPath();
             if ($path === null) {
                 $path = [];
             } elseif ($depth !== null) {
@@ -93,7 +93,7 @@ trait MaterializedPathQueryTrait
             FROM "tree"
             WHERE (
               ARRAY["tree"."id"] && (
-                SELECT "tree"."path"[(array_length("tree"."path", 1) - :depth ):(array_length("tree"."path", 1) - 1)]
+                SELECT "tree"."path"[(array_length("tree"."path", 1) - :depth ):array_length("tree"."path", 1)]
                 FROM "tree"
                 WHERE "tree"."id" = :id
               )
@@ -103,7 +103,7 @@ trait MaterializedPathQueryTrait
             $lowerBound = $depth === null
                 ? 0
                 : "(array_length({$this->getModel()->getPathColumn()}, 1) - {$depth})";
-            $upperBound = "(array_length({$this->getModel()->getPathColumn()}, 1) - 1)";
+            $upperBound = "(array_length({$this->getModel()->getPathColumn()}, 1))";
             $nodePathQuery = $this->getQuery()
                 ->select(new Expression("{$this->getModel()->getPathColumn()}[{$lowerBound}:{$upperBound}]"))
                 ->andWhere([$this->getModel()->getKeyColumn() => $node]);

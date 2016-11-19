@@ -156,8 +156,8 @@ class MaterializedPathBehaviorTest extends DbTestCase
     {
         $roots = Tree::find()->roots()->all();
         $this->assertEquals(2, count($roots));
-        $this->assertEquals($roots[0]->level, 1);
-        $this->assertEquals($roots[1]->level, 1);
+        $this->assertEquals($roots[0]->level, 0);
+        $this->assertEquals($roots[1]->level, 0);
         $this->assertGreaterThan($roots[0]->position, $roots[1]->position);
     }
 }

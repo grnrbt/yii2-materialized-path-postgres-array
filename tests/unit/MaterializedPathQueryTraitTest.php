@@ -38,13 +38,12 @@ class MaterializedPathQueryTraitTest extends DbTestCase
         $descIds = [9, 12];
         /** @var Tree $parent */
         $parent = Tree::find()->andWhere(['id' => $parentId])->one();
-        $modelDescs = $parent->getDescendants(1)->indexBy('id')->all();
+        $modelDescs = $parent->getDescendants(1)->indexBy('id')->asArray()->all();
         $this->assertEquals(count($descIds), count($modelDescs));
         $ids = array_keys($modelDescs);
         sort($ids);
         $this->assertEquals($descIds, $ids);
-
-        $queryDescs = Tree::find()->descendantsOf($parentId, 1)->indexBy('id')->all();
+        $queryDescs = Tree::find()->descendantsOf($parentId, 1)->indexBy('id')->asArray()->all();
         $this->assertEquals($modelDescs, $queryDescs);
     }
 

@@ -16,6 +16,7 @@ use yii\db\Expression;
  * @property ActiveRecord|MaterializedPathBehavior $parent
  * @property ActiveRecord|MaterializedPathBehavior[] $parents
  * @property ActiveRecord|MaterializedPathBehavior[] $children
+ * @mixin ActiveRecord
  */
 class MaterializedPathBehavior extends Behavior
 {
@@ -279,7 +280,7 @@ class MaterializedPathBehavior extends Behavior
      */
     public function isRoot()
     {
-        return $this->owner->getLevel() == 1;
+        return $this->owner->getLevel() == 0;
     }
 
     /**
@@ -410,20 +411,22 @@ class MaterializedPathBehavior extends Behavior
 
     public function afterInsert()
     {
-        if ($this->owner->{$this->pathAttribute} === $this->pathArrayToStr([])) {
-            $key = $this->owner->{$this->keyAttribute};
-            if ($this->operation === static::OPERATION_MAKE_ROOT) {
-                $path = $this->pathArrayToStr([$key]);
+        if (
+            $this->owner->{$this->pathAttribute} === $this->pathArrayToStr([]) &&
+            $this->operation !== static::OPERATION_MAKE_ROOT
+        ) {
+            if (
+                $this->operation === static::OPERATION_INSERT_BEFORE ||
+                $this->operation === static::OPERATION_INSERT_AFTER
+            ) {
+                $path = $this->node->getPath();
             } else {
-                if ($this->operation === static::OPERATION_INSERT_BEFORE || $this->operation === static::OPERATION_INSERT_AFTER) {
-                    $path = $this->node->getParentPath();
-                } else {
-                    $path = $this->node->getPath();
-                }
-                $path[] = $key;
-                $path = $this->pathArrayToStr($path);
+                $path = $this->node->getPath();
+                $path[] = $this->node->{$this->keyAttribute};
             }
+            $path = $this->pathArrayToStr($path);
             $this->owner->{$this->pathAttribute} = $path;
+            $key = $this->owner->{$this->keyAttribute};
             $this->owner->updateAll([$this->pathAttribute => $path], [$this->keyAttribute => $key]);
         }
 
@@ -569,10 +572,7 @@ class MaterializedPathBehavior extends Behavior
      */
     protected function makeRootInternal()
     {
-        $key = $this->owner->{$this->keyAttribute};
-        $this->owner->{$this->pathAttribute} = $key !== null
-            ? $this->pathArrayToStr([$key])
-            : $this->pathArrayToStr([]);
+        $this->owner->{$this->pathAttribute} = $this->pathArrayToStr([]);
         if ($this->positionAttribute !== null) {
             $maxPosition = $this->owner->find()->max($this->positionAttribute);
             $this->owner->{$this->positionAttribute} = $maxPosition === null ? 0 : $maxPosition + $this->step;
@@ -588,10 +588,9 @@ class MaterializedPathBehavior extends Behavior
     protected function insertIntoInternal($append)
     {
         $this->checkNode(false);
-        $key = $this->owner->{$this->keyAttribute};
-        if ($key !== null) {
+        if ($this->owner->{$this->keyAttribute} !== null) {
             $path = $this->pathStrToArray($this->node->{$this->pathAttribute});
-            $path[] = $key;
+            $path[] = $this->node->{$this->keyAttribute};
             $this->owner->{$this->pathAttribute} = $this->pathArrayToStr($path);
         }
         if ($this->positionAttribute !== null) {
@@ -681,9 +680,10 @@ class MaterializedPathBehavior extends Behavior
      * @param string $path
      * @return array
      */
-    protected function pathStrToArray($path)
+    public function pathStrToArray($path)
     {
-        return explode(",", trim($path, "{}"));
+        $res = explode(",", trim($path, "{}"));
+        return (count($res) == 1 && $res[0] === '') ? [] : $res;
     }
 
     /**
@@ -692,7 +692,7 @@ class MaterializedPathBehavior extends Behavior
      * @param array $path
      * @return string
      */
-    protected function pathArrayToStr($path)
+    public function pathArrayToStr($path)
     {
         return "{" . implode(",", $path) . "}";
     }
