@@ -91,6 +91,22 @@ class MaterializedPathBehavior extends Behavior
     }
 
     /**
+     * @return string
+     */
+    public function getKeyColumn()
+    {
+        return $this->keyColumn;
+    }
+
+    /**
+     * @return string
+     */
+    public function getPositionColumn()
+    {
+        return $this->positionColumn;
+    }
+
+    /**
      * @inheritdoc
      */
     public function events()
@@ -160,12 +176,10 @@ class MaterializedPathBehavior extends Behavior
             }
             $this->keyAttribute = $primaryKey[0];
         }
-
         $table = $owner->tableName();
-        $this->keyColumn = "{$table}.{$this->keyAttribute}";
-        $this->pathColumn = "{$table}.{$this->pathAttribute}";
-        $this->positionColumn = "{$table}.{$this->positionAttribute}";
-
+        $this->keyColumn = "{$table}.[[{$this->keyAttribute}]]";
+        $this->pathColumn = "{$table}.[[{$this->pathAttribute}]]";
+        $this->positionColumn = "{$table}.[[{$this->positionAttribute}]]";
         parent::attach($owner);
     }
 
@@ -177,20 +191,9 @@ class MaterializedPathBehavior extends Behavior
      */
     public function getParents($depth = null)
     {
-        $path = $this->getParentPath();
-        if ($path === null) {
-            $path = [];
-        } elseif ($depth !== null) {
-            $path = array_slice($path, -$depth);
-        }
-
-        /** @var \yii\db\ActiveQuery $query */
+        /** @var \yii\db\ActiveQuery|MaterializedPathQueryTrait $query */
         $query = $this->owner->find();
-        $query
-            ->andWhere([$this->keyColumn => $path])
-            ->addOrderBy([$this->pathColumn => SORT_ASC]);
-        $query->multiple = true;
-        return $query;
+        return $query->parentsOf($this->owner, $depth);
     }
 
     /**
@@ -200,9 +203,9 @@ class MaterializedPathBehavior extends Behavior
      */
     public function getParent()
     {
-        $query = $this->getParents(1)->limit(1);
-        $query->multiple = false;
-        return $query;
+        /** @var \yii\db\ActiveQuery|MaterializedPathQueryTrait $query */
+        $query = $this->owner->find();
+        return $query->parentOf($this->owner);
     }
 
     /**
@@ -228,37 +231,23 @@ class MaterializedPathBehavior extends Behavior
      *
      * @param int $depth = null
      * @param bool $andSelf = false
-     * @return \yii\db\ActiveQuery
+     * @return \yii\db\ActiveQuery|MaterializedPathQueryTrait
      */
     public function getDescendants($depth = null, $andSelf = false)
     {
-        $keyValue = $this->owner->{$this->keyAttribute};
-        /** @var \yii\db\ActiveQuery $query */
+        /** @var \yii\db\ActiveQuery|MaterializedPathQueryTrait $query */
         $query = $this->owner->find();
-        $query->andWhere("{$this->pathColumn} && array[{$keyValue}]");
-        if (!$andSelf) {
-            $query->andWhere(["!=", "{$this->keyColumn}", $keyValue]);
-        }
-        if ($depth !== null) {
-            $maxLevel = $depth + $this->getLevel();
-            $query->andWhere($this->getLevelCondition($maxLevel, "<="));
-        }
-        $query
-            ->addOrderBy([
-                "array_length({$this->pathColumn}, 1)" => SORT_ASC,
-                "{$this->positionColumn}" => SORT_ASC,
-                "{$this->keyColumn}" => SORT_ASC,
-            ]);
-        $query->multiple = true;
-        return $query;
+        return $query->descendantsOf($this->owner, $depth, $andSelf);
     }
 
     /**
-     * @return \yii\db\ActiveQuery
+     * @return \yii\db\ActiveQuery|MaterializedPathQueryTrait
      */
     public function getChildren()
     {
-        return $this->getDescendants(1);
+        /** @var \yii\db\ActiveQuery|MaterializedPathQueryTrait $query */
+        $query = $this->owner->find();
+        return $query->childrenOf($this->owner);
     }
 
     /**
@@ -268,7 +257,9 @@ class MaterializedPathBehavior extends Behavior
      */
     public function getPrev()
     {
-        return $this->getNearestSibling("prev");
+        /** @var \yii\db\ActiveQuery|MaterializedPathQueryTrait $query */
+        $query = $this->owner->find();
+        return $query->prevOf($this->owner);
     }
 
     /**
@@ -278,7 +269,9 @@ class MaterializedPathBehavior extends Behavior
      */
     public function getNext()
     {
-        return $this->getNearestSibling("next");
+        /** @var \yii\db\ActiveQuery|MaterializedPathQueryTrait $query */
+        $query = $this->owner->find();
+        return $query->nextOf($this->owner);
     }
 
     /**
@@ -670,54 +663,6 @@ class MaterializedPathBehavior extends Behavior
         }
     }
 
-    /**
-     * @param string $order "prev"|"next"
-     * @return \yii\db\ActiveQuery
-     * @throws Exception
-     */
-    protected function getNearestSibling($order)
-    {
-        $path = $this->owner->getParentPath();
-        if ($path === null) {
-            // TODO: fix it.
-            return [];
-        }
-        $keysStr = implode(",", $path);
-
-        /** @var \yii\db\ActiveQuery $query */
-        $query = $this->owner->find();
-        $query
-            ->andWhere("{$this->pathColumn} && array[{$keysStr}]")
-            ->andWhere($this->getLevelCondition($this->owner->getLevel()))
-            ->limit(1);
-
-        if ($order === "prev") {
-            $query
-                ->andWhere(['<', $this->positionColumn, $this->owner->{$this->positionAttribute}])
-                ->orderBy([$this->positionAttribute => SORT_DESC]);
-        } elseif ($order === "next") {
-            $query
-                ->andWhere(['>', $this->positionColumn, $this->owner->{$this->positionAttribute}])
-                ->orderBy([$this->positionAttribute => SORT_ASC]);
-
-        } else {
-            throw new Exception("Invalid value of \$order argument.");
-        }
-        $query->multiple = false;
-        return $query;
-    }
-
-    /**
-     * @param int $level
-     * @param string $sign
-     * @param string $tableName = null
-     * @return string
-     */
-    protected function getLevelCondition($level, $sign = "=", $tableName = null)
-    {
-        $pathColumn = $tableName === null ? $this->pathColumn : "{$tableName}.{$this->pathAttribute}";
-        return "array_length({$pathColumn}, 1) {$sign} {$level}";
-    }
 
     /**
      * @param int $parentKey
