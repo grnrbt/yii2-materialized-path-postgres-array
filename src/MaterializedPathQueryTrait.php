@@ -34,7 +34,6 @@ trait MaterializedPathQueryTrait
         $keyValue = is_object($node)
             ? $node->{$this->getModel()->keyAttribute}
             : $node;
-
         $this->andWhere("{$this->getModel()->getPathColumn()} && array[{$keyValue}]");
         if (!$andSelf) {
             $this->andWhere(["!=", "{$this->getModel()->getKeyColumn()}", $keyValue]);
@@ -42,20 +41,20 @@ trait MaterializedPathQueryTrait
         if ($depth !== null) {
             if (is_object($node)) {
                 $maxLevel = $depth + $node->getLevel();
-                $this->andWhere("array_length({$this->getModel()->getPathColumn()}, 1) <= {$maxLevel}");
+                $this->andWhere("{$this->getLevelExpression()} <= {$maxLevel}");
             } else {
                 $this->andWhere([
                     "<=",
-                    "array_length({$this->getModel()->getPathColumn()}, 1)",
+                    $this->getLevelExpression(),
                     $this->getQuery()
-                        ->select(new Expression("array_length({$this->getModel()->getPathColumn()}, 1) + {$depth}"))
+                        ->select(new Expression("{$this->getLevelExpression()} + {$depth}"))
                         ->andWhere([$this->getModel()->getKeyColumn() => $keyValue]),
                 ]);
             }
         }
         $this
             ->addOrderBy([
-                "array_length({$this->getModel()->getPathColumn()}, 1)" => SORT_ASC,
+                $this->getLevelExpression() => SORT_ASC,
                 "{$this->getModel()->getPositionColumn()}" => SORT_ASC,
                 "{$this->getModel()->getKeyColumn()}" => SORT_ASC,
             ]);
@@ -102,10 +101,10 @@ trait MaterializedPathQueryTrait
             */
             $lowerBound = $depth === null
                 ? 0
-                : "(array_length({$this->getModel()->getPathColumn()}, 1) - {$depth})";
-            $upperBound = "(array_length({$this->getModel()->getPathColumn()}, 1))";
+                : "({$this->getLevelExpression()} - {$depth} + 1)";
+            $upperBound = $this->getLevelExpression();
             $nodePathQuery = $this->getQuery()
-                ->select(new Expression("{$this->getModel()->getPathColumn()}[{$lowerBound}:{$upperBound}]"))
+                ->select(new Expression("{$this->getModel()->getPathColumn()}[{$lowerBound}:({$upperBound})]"))
                 ->andWhere([$this->getModel()->getKeyColumn() => $node]);
             $this->andWhere([
                 "&&",
@@ -195,12 +194,12 @@ trait MaterializedPathQueryTrait
         $pathCondition = is_object($node)
             ? $node->getParentPath(false)
             : $this->getQuery()
-                ->select(new Expression("{$pathCol}[1:(array_length({$pathCol}, 1) - 1)]"))
+                ->select(new Expression("{$pathCol}[1:({$this->getLevelExpression()} - 1)]"))
                 ->andWhere([$keyCol => $node]);
         $levelCondition = is_object($node)
             ? $node->getLevel()
             : $this->getQuery()
-                ->select(new Expression("array_length({$pathCol}, 1)"))
+                ->select(new Expression($this->getLevelExpression()))
                 ->andWhere([$keyCol => $node]);
         $positionCondition = is_object($node)
             ? $node->{$positionAttr}
@@ -210,7 +209,7 @@ trait MaterializedPathQueryTrait
 
         $this
             ->andWhere(['&&', $pathCol, $pathCondition])
-            ->andWhere(['=', "array_length({$pathCol}, 1)", $levelCondition])
+            ->andWhere(['=', $this->getLevelExpression(), $levelCondition])
             ->andWhere([($direction == 'prev' ? '<' : '>'), $positionCol, $positionCondition])
             ->orderBy([$positionAttr => ($direction == 'prev' ? SORT_DESC : SORT_ASC)])
             ->limit(1);
@@ -239,5 +238,13 @@ trait MaterializedPathQueryTrait
 
         }
         return $this->model;
+    }
+
+    /**
+     * @return string
+     */
+    private function getLevelExpression()
+    {
+        return "coalesce(array_length({$this->getModel()->getPathColumn()}, 1), 0)";
     }
 }
