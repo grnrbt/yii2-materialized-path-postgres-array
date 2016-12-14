@@ -403,7 +403,7 @@ class MaterializedPathBehavior extends Behavior
                 break;
             default:
                 $path = $this->owner->getParentPath();
-                $path[] = $this->owner->{$this->keyAttribute};
+                $path[] = $this->owner->getParentKey();
                 $this->owner->{$this->pathAttribute} = $this->pathArrayToStr($path);
                 break;
         }
@@ -543,7 +543,7 @@ class MaterializedPathBehavior extends Behavior
         if ($this->owner->isRoot()) {
             return null;
         }
-        $path = $this->getParentPath();
+        $path = $this->getPath();
         return array_pop($path);
     }
 
