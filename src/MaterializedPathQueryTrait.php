@@ -147,6 +147,18 @@ trait MaterializedPathQueryTrait
     }
 
     /**
+     * @param int $level
+     * @return MaterializedPathQueryTrait|\yii\db\ActiveQuery
+     */
+    public function level($level)
+    {
+        return $this->andWhere(
+            "coalesce(array_length({$this->getModel()->getPathColumn()}, 1), 0) = :level",
+            [':level' => $level]
+        );
+    }
+
+    /**
      * @param MaterializedPathQueryTrait|mixed $node Specified node or its key.
      * @param string $direction next|prev
      * @return MaterializedPathQueryTrait|\yii\db\ActiveQuery
