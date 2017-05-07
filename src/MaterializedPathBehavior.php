@@ -574,7 +574,7 @@ class MaterializedPathBehavior extends Behavior
     {
         $this->owner->{$this->pathAttribute} = $this->pathArrayToStr([]);
         if ($this->positionAttribute !== null) {
-            $maxPosition = $this->owner->find()->max($this->positionAttribute);
+            $maxPosition = $this->owner->find()->orderBy(null)->max($this->positionAttribute);
             $this->owner->{$this->positionAttribute} = $maxPosition === null ? 0 : $maxPosition + $this->step;
         }
     }
