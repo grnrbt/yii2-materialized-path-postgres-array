@@ -171,7 +171,7 @@ trait MaterializedPathQueryTrait
             SELECT *
             FROM "tree"
             WHERE "tree"."path" && (
-              SELECT "tree"."path" [1 :(array_length("tree"."path", 1) - 1)]
+              SELECT "tree"."path"
               FROM "tree"
               WHERE "tree"."id" = :id
             ) AND array_length("tree"."path", 1) = (
@@ -189,7 +189,7 @@ trait MaterializedPathQueryTrait
         FOR OBJECT:
             SELECT *
             FROM "tree"
-            WHERE "tree"."path" && :nodeParentPath
+            WHERE "tree"."path" && :nodePath
             AND array_length("tree"."path", 1) = :nodeLevel
             AND "tree"."position" > :ndePosition
             ORDER BY "position"
@@ -205,9 +205,9 @@ trait MaterializedPathQueryTrait
         }
 
         $pathCondition = is_object($node)
-            ? $node->getParentPath(false)
+            ? $node->getPath(false)
             : $this->getQuery()
-                ->select(new Expression("{$pathCol}[1:({$this->getLevelExpression()} - 1)]"))
+                ->select(new Expression("{$pathCol}"))
                 ->andWhere([$keyCol => $node]);
         $levelCondition = is_object($node)
             ? $node->getLevel()

@@ -620,8 +620,7 @@ class MaterializedPathBehavior extends Behavior
         $this->checkNode(true);
         $key = $this->owner->{$this->keyAttribute};
         if ($key !== null) {
-            $path = $this->node->getParentPath($this->pathAttribute);
-            $path[] = $key;
+            $path = $this->node->getPath($this->pathAttribute);
             $this->owner->{$this->pathAttribute} = $this->pathArrayToStr($path);
         }
         if ($this->positionAttribute !== null) {
