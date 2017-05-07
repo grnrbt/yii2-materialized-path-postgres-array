@@ -34,10 +34,11 @@ trait MaterializedPathQueryTrait
         $keyValue = is_object($node)
             ? $node->{$this->getModel()->keyAttribute}
             : $node;
-        $this->andWhere("{$this->getModel()->getPathColumn()} && array[{$keyValue}]");
-        if (!$andSelf) {
-            $this->andWhere(["!=", "{$this->getModel()->getKeyColumn()}", $keyValue]);
+        $condition = ['or', "{$this->getModel()->getPathColumn()} && array[{$keyValue}]"];
+        if ($andSelf) {
+            $condition[] = ["=", "{$this->getModel()->getKeyColumn()}", $keyValue];
         }
+        $this->andWhere($condition);
         if ($depth !== null) {
             if (is_object($node)) {
                 $maxLevel = $depth + $node->getLevel();

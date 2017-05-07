@@ -32,6 +32,21 @@ class MaterializedPathQueryTraitTest extends DbTestCase
         $this->assertEquals($modelDescs, $queryDescs);
     }
 
+    public function testDescendantsOfWithSelf()
+    {
+        $parentId = 8;
+        $descIds = [8, 9, 10, 11, 12, 13, 14];
+        /** @var Tree $parent */
+        $parent = Tree::find()->andWhere(['id' => $parentId])->one();
+        $modelDescs = $parent->getDescendants(null, true)->indexBy('id')->all();
+        $this->assertEquals(count($descIds), count($modelDescs));
+        $ids = array_keys($modelDescs);
+        sort($ids);
+        $this->assertEquals($descIds, $ids);
+        $queryDescs = Tree::find()->descendantsOf($parentId, null, true)->indexBy('id')->all();
+        $this->assertEquals($modelDescs, $queryDescs);
+    }
+
     public function testDescendantsOfWithDepth()
     {
         $parentId = 8;
