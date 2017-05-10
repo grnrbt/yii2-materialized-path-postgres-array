@@ -149,12 +149,13 @@ trait MaterializedPathQueryTrait
 
     /**
      * @param int $level
+     * @param string $operator = '='
      * @return MaterializedPathQueryTrait|\yii\db\ActiveQuery
      */
-    public function level($level)
+    public function level($level, $operator = '=')
     {
         return $this->andWhere(
-            "coalesce(array_length({$this->getModel()->getPathColumn()}, 1), 0) = :level",
+            "coalesce(array_length({$this->getModel()->getPathColumn()}, 1), 0) {$operator} :level",
             [':level' => $level]
         );
     }
