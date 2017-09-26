@@ -478,6 +478,7 @@ class MaterializedPathBehavior extends Behavior
                 $positionField = $this->positionAttribute;
                 $parentKey = $this->owner->{$this->keyAttribute};
                 $step = $this->step;
+                $level = $this->getLevel() + 1;
                 \Yii::$app->getDb()->createCommand("
                     DO $$
                       DECLARE
@@ -488,6 +489,7 @@ class MaterializedPathBehavior extends Behavior
                           SELECT {$keyField}
                           FROM {$table}
                           WHERE {$pathField} && array[{$parentKey}] AND {$keyField} != {$parentKey}
+                          AND ARRAY_LENGTH({$pathField}, 1) = {$level}
                         LOOP
                           UPDATE {$table} set {$positionField} = pos * {$step}
                           WHERE {$keyField} = row.{$keyField};
