@@ -521,8 +521,7 @@ class MaterializedPathBehavior extends Behavior
             ->all();
         $relates = [];
         foreach ($nodes as $key => $node) {
-            $path = $node->getParentPath();
-            $parentKey = array_pop($path);
+            $parentKey = $node->getParentKey();
             if (!isset($relates[$parentKey])) {
                 $relates[$parentKey] = [];
             }
