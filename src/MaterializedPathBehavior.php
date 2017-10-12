@@ -490,6 +490,7 @@ class MaterializedPathBehavior extends Behavior
                           FROM {$table}
                           WHERE {$pathField} && array[{$parentKey}] AND {$keyField} != {$parentKey}
                           AND ARRAY_LENGTH({$pathField}, 1) = {$level}
+                          ORDER BY {$positionField}
                         LOOP
                           UPDATE {$table} set {$positionField} = pos * {$step}
                           WHERE {$keyField} = row.{$keyField};
