@@ -84,6 +84,22 @@ class MaterializedPathBehavior extends Behavior
     protected $positionColumn;
 
     /**
+     * @var bool
+     */
+    protected $useArrayExpressions = false;
+
+    /**
+     * @inheritdoc
+     */
+    public function init()
+    {
+        if (class_exists('\yii\db\ArrayExpression')) {
+            $this->useArrayExpressions = true;
+        }
+        parent::init();
+    }
+
+    /**
      * @return string
      */
     public function getPathColumn()
@@ -120,7 +136,7 @@ class MaterializedPathBehavior extends Behavior
             ActiveRecord::EVENT_BEFORE_DELETE => 'beforeDelete',
             ActiveRecord::EVENT_AFTER_DELETE => 'afterDelete',
         ];
-        if ($this->autoChildrenReorder === true) {
+        if ($this->autoChildrenReorder) {
             $handlers[static::EVENT_CHILDREN_ORDER_CHANGED] = 'onChildrenOrderChanged';
         }
         return $handlers;
@@ -130,19 +146,19 @@ class MaterializedPathBehavior extends Behavior
      * Returns path of self node.
      *
      * @param bool $asArray = true Return array instead string
-     * @return array|string
+     * @return array|string|\yii\db\ArrayExpression
      */
     public function getPath($asArray = true)
     {
-        $str = $this->owner->{$this->pathAttribute};
-        return $asArray ? $this->pathStrToArray($str) : $str;
+        $raw = $this->owner->{$this->pathAttribute};
+        return $asArray ? $this->convertPathFromPgToPhp($raw) : $raw;
     }
 
     /**
      * Returns path from root to parent node.
      *
      * @param bool $asArray = true
-     * @return null|string|array
+     * @return null|string|array|\yii\db\ArrayExpression
      */
     public function getParentPath($asArray = true)
     {
@@ -151,7 +167,7 @@ class MaterializedPathBehavior extends Behavior
         }
         $path = $this->owner->getPath();
         array_pop($path);
-        return $asArray ? $path : $this->pathArrayToStr($path);
+        return $asArray ? $path : $this->convertPathFromPhpToPg($path);
     }
 
     /**
@@ -173,7 +189,7 @@ class MaterializedPathBehavior extends Behavior
         if ($this->keyAttribute === null) {
             $primaryKey = $owner->primaryKey();
             if (!isset($primaryKey[0])) {
-                throw new Exception('"' . $owner->className() . '" must have a primary key.');
+                throw new Exception('"' . $owner::className() . '" must have a primary key.');
             }
             $this->keyAttribute = $primaryKey[0];
         }
@@ -314,7 +330,7 @@ class MaterializedPathBehavior extends Behavior
      */
     public function isLeaf()
     {
-        return count($this->owner->children) === 0;
+        return count($this->owner->children) == 0;
     }
 
     /**
@@ -379,11 +395,11 @@ class MaterializedPathBehavior extends Behavior
         if ($this->node !== null && !$this->node->getIsNewRecord()) {
             $this->node->refresh();
         }
-        if ($this->owner->getIsNewRecord() && $this->operation === null) {
+        if ($this->owner->getIsNewRecord() && $this->operation == null) {
             $this->operation = static::OPERATION_MAKE_ROOT;
         }
-        if ($this->owner->{$this->pathAttribute} === null) {
-            $this->owner->{$this->pathAttribute} = $this->pathArrayToStr([]);
+        if ($this->owner->{$this->pathAttribute} == null) {
+            $this->owner->{$this->pathAttribute} = $this->convertPathFromPhpToPg([]);
         }
         switch ($this->operation) {
             case static::OPERATION_MAKE_ROOT:
@@ -404,7 +420,7 @@ class MaterializedPathBehavior extends Behavior
             default:
                 $path = $this->owner->getParentPath();
                 $path[] = $this->owner->getParentKey();
-                $this->owner->{$this->pathAttribute} = $this->pathArrayToStr($path);
+                $this->owner->{$this->pathAttribute} = $this->convertPathFromPhpToPg($path);
                 break;
         }
     }
@@ -412,19 +428,19 @@ class MaterializedPathBehavior extends Behavior
     public function afterInsert()
     {
         if (
-            $this->owner->{$this->pathAttribute} === $this->pathArrayToStr([]) &&
+            $this->owner->{$this->pathAttribute} == $this->convertPathFromPhpToPg([]) &&
             $this->operation !== static::OPERATION_MAKE_ROOT
         ) {
             if (
-                $this->operation === static::OPERATION_INSERT_BEFORE ||
-                $this->operation === static::OPERATION_INSERT_AFTER
+                $this->operation == static::OPERATION_INSERT_BEFORE ||
+                $this->operation == static::OPERATION_INSERT_AFTER
             ) {
                 $path = $this->node->getPath();
             } else {
                 $path = $this->node->getPath();
                 $path[] = $this->node->{$this->keyAttribute};
             }
-            $path = $this->pathArrayToStr($path);
+            $path = $this->convertPathFromPhpToPg($path);
             $this->owner->{$this->pathAttribute} = $path;
             $key = $this->owner->{$this->keyAttribute};
             $this->owner->updateAll([$this->pathAttribute => $path], [$this->keyAttribute => $key]);
@@ -574,7 +590,7 @@ class MaterializedPathBehavior extends Behavior
      */
     protected function makeRootInternal()
     {
-        $this->owner->{$this->pathAttribute} = $this->pathArrayToStr([]);
+        $this->owner->{$this->pathAttribute} = $this->convertPathFromPhpToPg([]);
         if ($this->positionAttribute !== null) {
             $maxPosition = $this->owner->find()->orderBy(null)->max($this->positionAttribute);
             $this->owner->{$this->positionAttribute} = $maxPosition === null ? 0 : $maxPosition + $this->step;
@@ -591,15 +607,15 @@ class MaterializedPathBehavior extends Behavior
     {
         $this->checkNode(false);
         if ($this->owner->{$this->keyAttribute} !== null) {
-            $path = $this->pathStrToArray($this->node->{$this->pathAttribute});
+            $path = $this->convertPathFromPgToPhp($this->node->{$this->pathAttribute});
             $path[] = $this->node->{$this->keyAttribute};
-            $this->owner->{$this->pathAttribute} = $this->pathArrayToStr($path);
+            $this->owner->{$this->pathAttribute} = $this->convertPathFromPhpToPg($path);
         }
         if ($this->positionAttribute !== null) {
             $to = $this->node->getChildren()->orderBy(null);
             $to = $append ? $to->max($this->positionAttribute) : $to->min($this->positionAttribute);
             if (
-                !$this->owner->getIsNewRecord() && (int)$to === $this->owner->{$this->positionAttribute}
+                !$this->owner->getIsNewRecord() && (int)$to == $this->owner->{$this->positionAttribute}
                 && !$this->owner->getDirtyAttributes([$this->pathAttribute])
             ) {
             } elseif ($to !== null) {
@@ -622,8 +638,8 @@ class MaterializedPathBehavior extends Behavior
         $this->checkNode(true);
         $key = $this->owner->{$this->keyAttribute};
         if ($key !== null) {
-            $path = $this->node->getPath($this->pathAttribute);
-            $this->owner->{$this->pathAttribute} = $this->pathArrayToStr($path);
+            $path = $this->node->getPath();
+            $this->owner->{$this->pathAttribute} = $this->convertPathFromPhpToPg($path);
         }
         if ($this->positionAttribute !== null) {
             $position = $this->node->{$this->positionAttribute};
@@ -655,7 +671,12 @@ class MaterializedPathBehavior extends Behavior
 
         if (isset($changedAttributes[$this->pathAttribute])) {
             $newParentPath = $this->owner->getParentPath(false);
-            $oldParentLevel = count($this->pathStrToArray($oldPath));
+            // TODO: hack for backward compatible with Yii =<2.0.14.0
+            if ($this->useArrayExpressions) {
+                $newParentPath=$newParentPath?$newParentPath->getValue():[];
+                $newParentPath = $this->convertPathFromPhpToPg($newParentPath, true);
+            }
+            $oldParentLevel = count($this->convertPathFromPgToPhp($oldPath));
             $update['path'] = new Expression("'{$newParentPath}' || {$this->pathAttribute}[{$oldParentLevel}:array_length({$this->pathAttribute}, 1)]");
         }
         if (!empty($update)) {
@@ -671,39 +692,44 @@ class MaterializedPathBehavior extends Behavior
      */
     protected function getChildrenCondition($parentKey, $tableName = null)
     {
-        $pathColumn = $tableName === null ? $this->pathColumn : "{$tableName}.{$this->pathAttribute}";
+        $pathColumn = $tableName ? $this->pathColumn : "{$tableName}.{$this->pathAttribute}";
         return "{$pathColumn} && array[{$parentKey}]";
     }
 
     /**
-     * Convert path values from string to array
-     *
-     * @param string $path
-     * @return array
+     * @param string|\yii\db\ArrayExpression $path
+     * @return int[]
      */
-    public function pathStrToArray($path)
+    protected function convertPathFromPgToPhp($path)
     {
-        $res = explode(",", trim($path, "{}"));
-        return (count($res) == 1 && $res[0] === '') ? [] : $res;
+        if ($this->useArrayExpressions) {
+            return $path->getValue();
+        } else {
+            $res = explode(",", trim($path, "{}"));
+            return (count($res) == 1 && $res[0] == '') ? [] : $res;
+        }
     }
 
     /**
-     * Convert path values from  array to string
-     *
-     * @param array $path
-     * @return string
+     * @param int[] $path
+     * @param bool $forceOldStyle = false
+     * @return string|\yii\db\ArrayExpression
      */
-    public function pathArrayToStr($path)
+    protected function convertPathFromPhpToPg($path, $forceOldStyle = false)
     {
-        return "{" . implode(",", $path) . "}";
+        if (!$forceOldStyle && $this->useArrayExpressions) {
+            return new \yii\db\ArrayExpression($path, 'INTEGER');
+        } else {
+            return "{" . implode(",", $path) . "}";
+        }
     }
 
     protected function fireEvent()
     {
         if (
-            $this->operation === static::OPERATION_PREPEND_TO ||
-            $this->operation === static::OPERATION_INSERT_AFTER ||
-            $this->operation === static::OPERATION_INSERT_BEFORE
+            $this->operation == static::OPERATION_PREPEND_TO ||
+            $this->operation == static::OPERATION_INSERT_AFTER ||
+            $this->operation == static::OPERATION_INSERT_BEFORE
         ) {
             Event::trigger(get_class($this->owner), static::EVENT_CHILDREN_ORDER_CHANGED, new ChildrenOrderChangedEvent([
                 'parent' => $this->owner->parent,
