@@ -673,7 +673,7 @@ class MaterializedPathBehavior extends Behavior
             $newParentPath = $this->owner->getParentPath(false);
             // TODO: hack for backward compatible with Yii =<2.0.14.0
             if ($this->useArrayExpressions) {
-                $newParentPath=$newParentPath?$newParentPath->getValue():[];
+                $newParentPath = $newParentPath ? $newParentPath->getValue() : [];
                 $newParentPath = $this->convertPathFromPhpToPg($newParentPath, true);
             }
             $oldParentLevel = count($this->convertPathFromPgToPhp($oldPath));
