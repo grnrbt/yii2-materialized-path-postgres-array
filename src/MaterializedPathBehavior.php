@@ -419,8 +419,10 @@ class MaterializedPathBehavior extends Behavior
                 break;
             default:
                 $path = $this->owner->getParentPath();
-                $path[] = $this->owner->getParentKey();
-                $this->owner->{$this->pathAttribute} = $this->convertPathFromPhpToPg($path);
+                if ($path !== null) {
+                    $path[] = $this->owner->getParentKey();
+                    $this->owner->{$this->pathAttribute} = $this->convertPathFromPhpToPg($path);
+                }
                 break;
         }
     }
